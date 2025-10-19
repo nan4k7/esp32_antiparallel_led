@@ -39,7 +39,9 @@ int currentHour = -1;
 int currentMin = -1;
 
 int startHourDef = 19;
-int endHourDef = 4;
+int startMinDef = 30;
+int endHourDef = 2;
+int endMinDef = 0;
 int pwmPowerDef = 5;
 
 // Wi-Fi
@@ -57,7 +59,9 @@ bool timeClientEnabled = false;
 // Preferences
 Preferences preferences;
 int startHour;
+int startMin;
 int endHour;
+int endMin;
 int pwmPower;
 
 // Web Server
@@ -262,7 +266,9 @@ void setup() {
 
   preferences.begin("led-config", true);
   startHour = preferences.getInt("startHour", startHourDef);
+  startMin = preferences.getInt("startMin", startMinDef);
   endHour = preferences.getInt("endHour", endHourDef);
+  endMin = preferences.getInt("endMin", endMinDef);
   pwmPower = preferences.getInt("pwmPower", pwmPowerDef);
   preferences.end();
 
@@ -277,11 +283,19 @@ void setup() {
       <body>
         <h2>LED On/Off Time Configuration</h2>
         <form action="/set-times" method="post">
-          Start Hour: <input type="number" name="startHour" min="0" max="23" value=")rawliteral";
+          Start Time:
+          <input type="number" name="startHour" min="0" max="23" value=")rawliteral";
     html += String(startHour);
+    html += R"rawliteral(">:
+          <input type="number" name="startMin" min="0" max="59" value=")rawliteral";
+    html += String(startMin);
     html += R"rawliteral("><br>
-          End Hour: <input type="number" name="endHour" min="0" max="23" value=")rawliteral";
+          End Time:
+          <input type="number" name="endHour" min="0" max="23" value=")rawliteral";
     html += String(endHour);
+    html += R"rawliteral(">:
+          <input type="number" name="endMin" min="0" max="59" value=")rawliteral";
+    html += String(endMin);
     html += R"rawliteral("><br>
           Power: <input type="number" name="pwmPower" min="0" max="100" )rawliteral";
 
@@ -301,13 +315,18 @@ void setup() {
   });
 
   server.on("/set-times", HTTP_POST, [](AsyncWebServerRequest* request) {
-    if (request->hasParam("startHour", true) && request->hasParam("endHour", true)) {
+    if (request->hasParam("startHour", true) && request->hasParam("startMin", true) &&
+        request->hasParam("endHour", true) && request->hasParam("endMin", true)) {
       startHour = request->getParam("startHour", true)->value().toInt();
+      startMin = request->getParam("startMin", true)->value().toInt();
       endHour = request->getParam("endHour", true)->value().toInt();
+      endMin = request->getParam("endMin", true)->value().toInt();
 
       preferences.begin("led-config", false);
       preferences.putInt("startHour", startHour);
+      preferences.putInt("startMin", startMin);
       preferences.putInt("endHour", endHour);
+      preferences.putInt("endMin", endMin);
 
       if (!potPinFlag) {
         pwmPower = request->getParam("pwmPower", true)->value().toInt();
@@ -353,7 +372,8 @@ void loop() {
     }
 
     lastNTPUpdate = currentMillis;  // Actualizar el tiempo de la última sincronización
-  } else {
+  }
+  else {
     disconnectWiFi();
     //endTimeClient();
     stopOTA();
@@ -378,10 +398,19 @@ void loop() {
 
       lastNTPUpdate = currentMillis;
     }
-  } else {
+  }
+  else {
     updateLocalTime();
 
-    if (forceOn || (mismoDia && (currentHour >= startHour && currentHour < endHour)) || (!mismoDia && (currentHour >= startHour || currentHour < endHour))) {
+    // Convertir a minutos para comparación más fácil
+    int currentTimeInMinutes = currentHour * 60 + currentMin;
+    int startTimeInMinutes = startHour * 60 + startMin;
+    int endTimeInMinutes = endHour * 60 + endMin;
+
+    if (forceOn ||
+       (mismoDia && (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes)) ||
+       (!mismoDia && (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes))) {
+      
       if (!running || !firstRun) {
         running = true;
         firstRun = true;
@@ -394,7 +423,8 @@ void loop() {
       if (altLedFlag) {
         digitalWrite(LED_ALT, HIGH);
       }
-    } else {
+    }
+    else {
       if (running || !firstRun) {
         running = false;
         firstRun = true;

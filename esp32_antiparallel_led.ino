@@ -1,3 +1,5 @@
+#define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
+
 #include <WiFi.h>
 #include "esp_wifi.h"
 #include "esp_pm.h"
@@ -17,7 +19,7 @@
 #define WIFI_SWITCH_PIN 1      // GPIO para el interruptor Wi-Fi
 #define FORCEON_SWITCH_PIN -1  //GPIO para el interruptor de encendido forzado
 #define POTPOWER_PIN -1        // GPIO para el potenciómetro (-1 para desactivar)
-#define DEVNAME "esp32-led-candlelight"
+#define DEVNAME "esp32-led-lantern"
 
 #define WIFI_SSID "Fibergarch 2.4"
 #define WIFI_PASS "Hipolito480"
@@ -49,7 +51,7 @@ bool wifiAlwaysOn = false;
 
 // NTP
 unsigned long lastNTPUpdate = 0;                   // Almacena el tiempo de la última actualización NTP
-const unsigned long ntpUpdateInterval = 21600000;  // 6 horas en milisegundos
+const unsigned long ntpUpdateInterval = 64800000;  // 18 horas en milisegundos
 const unsigned long ntpUpdateIntervalRetry = 30000;
 
 WiFiUDP ntpUDP;
@@ -92,7 +94,7 @@ void connectWiFi() {
   };
 
   esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
-  esp_wifi_set_max_tx_power(40);
+  esp_wifi_set_max_tx_power(30);
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
   if (WiFi.status() != WL_CONNECTED) {
@@ -184,7 +186,8 @@ void onOTAEnd(bool success) {
   // Log when OTA has finished
   if (success) {
     Serial.println("OTA update finalizado successfully!");
-  } else {
+  }
+  else {
     Serial.println("Error durante el update OTA!");
   }
 }
@@ -338,7 +341,8 @@ void setup() {
       Serial.println("Configuración guardada");
 
       request->redirect("/");
-    } else {
+    }
+    else {
       request->send(400, "text/plain", "Invalid Input");
     }
   });
@@ -410,7 +414,7 @@ void loop() {
     if (forceOn ||
        (mismoDia && (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes)) ||
        (!mismoDia && (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes))) {
-      
+
       if (!running || !firstRun) {
         running = true;
         firstRun = true;
@@ -440,7 +444,7 @@ void loop() {
       }
 
       if (!wifiAlwaysOn) {
-        esp_sleep_enable_timer_wakeup(10 * 1000000);
+        esp_sleep_enable_timer_wakeup(50 * 1000000);
         esp_light_sleep_start();
       }
     }
